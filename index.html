@@ -1,1 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AquaDrop - Purified Water Delivery</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #e0f7fa, #b2ebf2, #80deea, #4dd0e1);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            overflow-x: hidden; /* Prevent horizontal scrollbar from drops */
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .dealer-card {
+            transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+            z-index: 10; /* Ensure cards are above drops */
+        }
+        .dealer-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.06);
+        }
+        .selected-dealer {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.5);
+            transform: scale(1.03);
+        }
+        .hidden {
+            display: none;
+        }
+        
+        /* Animation for elements fading in */
+        .animate-on-scroll {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+        .animate-on-scroll.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Slideshow styles */
+        .slideshow-container {
+            position: relative;
+            margin: auto;
+        }
+        .slide {
+            display: none;
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+        .slide.active {
+            display: block;
+            animation-name: fade;
+            animation-duration: 0.5s;
+        }
+        @keyframes fade {
+            from {opacity: .4}
+            to {opacity: 1}
+        }
+        .prev, .next {
+            cursor: pointer;
+            position: absolute;
+            top: 50%;
+            width: auto;
+            padding: 16px;
+            margin-top: -22px;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+            transition: 0.3s ease;
+            border-radius: 0 3px 3px 0;
+            user-select: none;
+            background-color: rgba(0,0,0,0.3);
+        }
+        .next {
+            right: 0;
+            border-radius: 3px 0 0 3px;
+        }
+        .prev:hover, .next:hover {
+            background-color: rgba(0,0,0,0.6);
+        }
+
+        /* Water Drop Animation */
+        .drop-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Make sure drops don't interfere with clicks */
+            z-index: -1;
+        }
+        .drop {
+            position: absolute;
+            bottom: 100%;
+            width: 15px;
+            height: 15px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            animation: drop-fall linear infinite;
+        }
+        @keyframes drop-fall {
+            to {
+                transform: translateY(100vh);
+            }
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <!-- Water Drop Container -->
+    <div id="dropContainer" class="drop-container"></div>
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl relative z-10">
+        
+        <!-- Header -->
+        <header class="text-center mb-12 animate-on-scroll">
+            <h1 class="text-4xl sm:text-5xl font-bold text-cyan-800">AquaDrop</h1>
+            <p class="text-lg text-cyan-700 mt-2">Fast & Reliable Water Can Delivery</p>
+        </header>
+
+        <main>
+            <!-- Step 1: Dealer Selection -->
+            <section id="dealerSelection" class="mb-8 animate-on-scroll">
+                <h2 class="text-2xl font-semibold mb-4 border-b-2 border-cyan-200 pb-2 text-cyan-900">1. Choose Your Water Supplier</h2>
+                <div id="dealerList" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Dealer cards will be dynamically inserted here -->
+                </div>
+            </section>
+
+            <!-- Step 2: Order Details -->
+            <section id="orderDetails" class="hidden mb-8 bg-white/80 backdrop-blur-sm p-6 rounded-lg shadow-lg animate-on-scroll">
+                <h2 class="text-2xl font-semibold mb-6 border-b-2 border-cyan-200 pb-2 text-cyan-900">2. Order Details</h2>
+                
+                <div class="mb-6">
+                    <label for="waterCans" class="block text-lg font-medium text-gray-700 mb-2">Number of Water Cans (20L)</label>
+                    <div class="flex items-center">
+                        <button onclick="updateQuantity(-1)" class="bg-gray-200 text-gray-700 hover:bg-gray-300 rounded-l-lg px-4 py-2 font-bold text-xl">-</button>
+                        <input type="number" id="waterCans" value="1" min="1" class="w-20 text-center border-t border-b border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 py-2" readonly>
+                        <button onclick="updateQuantity(1)" class="bg-gray-200 text-gray-700 hover:bg-gray-300 rounded-r-lg px-4 py-2 font-bold text-xl">+</button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-lg font-medium text-gray-700 mb-2">Delivery Time</label>
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <button id="deliverNowBtn" onclick="selectDeliveryTime('now')" class="flex-1 bg-blue-500 text-white font-semibold py-3 px-4 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition">
+                            Deliver Now
+                        </button>
+                        <button id="scheduleLaterBtn" onclick="selectDeliveryTime('later')" class="flex-1 bg-gray-200 text-gray-700 font-semibold py-3 px-4 rounded-lg hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 transition">
+                            Schedule for Later
+                        </button>
+                    </div>
+                    <div id="scheduleOptions" class="hidden mt-4">
+                        <input type="datetime-local" id="deliveryTime" class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                </div>
+                
+                <button onclick="showUserInfo()" class="mt-8 w-full bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600 transition text-lg">
+                    Proceed
+                </button>
+            </section>
+
+            <!-- Step 3: User Information -->
+            <section id="userInfo" class="hidden mb-8 bg-white/80 backdrop-blur-sm p-6 rounded-lg shadow-lg animate-on-scroll">
+                <h2 class="text-2xl font-semibold mb-6 border-b-2 border-cyan-200 pb-2 text-cyan-900">3. Your Information</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="customerName" class="block text-sm font-medium text-gray-700">Full Name</label>
+                        <input type="text" id="customerName" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="customerMobile" class="block text-sm font-medium text-gray-700">Mobile Number</label>
+                        <input type="tel" id="customerMobile" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="customerAddress" class="block text-sm font-medium text-gray-700">Delivery Address</label>
+                        <textarea id="customerAddress" rows="3" class="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></textarea>
+                    </div>
+                    <!-- New Pinned Location Section -->
+                    <div class="pt-2">
+                        <label class="block text-sm font-medium text-gray-700">Pinned Location</label>
+                        <div class="mt-1 flex items-center gap-4">
+                            <button type="button" onclick="handlePinLocationClick()" class="bg-indigo-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-600 transition text-sm">
+                                📍 Pin My Current Location
+                            </button>
+                            <span id="locationStatus" class="text-sm text-gray-600 font-medium"></span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">For a more accurate delivery, please share your location.</p>
+                    </div>
+                </div>
+                 <button onclick="confirmOrder()" class="mt-6 w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition text-lg">
+                    Confirm Order & Send on WhatsApp
+                </button>
+            </section>
+
+        </main>
+        
+        <!-- Footer -->
+        <footer class="text-center mt-12 text-cyan-800 font-medium animate-on-scroll">
+            <p>&copy; 2024 AquaDrop. All rights reserved.</p>
+        </footer>
+
+    </div>
+
+    <script>
+        // --- DATA ---
+        const dealers = [
+            { id: 1, name: 'Ganga Pure Waters', location: 'Madhapur, Hyderabad', deliveryTime: '30-45 mins', hours: '8:00 AM - 9:00 PM', whatsapp: '919876543210', images: ['https://placehold.co/600x400/3b82f6/ffffff?text=Shop+Front', 'https://placehold.co/600x400/10b981/ffffff?text=Delivery+Van', 'https://placehold.co/600x400/ef4444/ffffff?text=Water+Cans'] },
+            { id: 2, name: 'Himalayan Springs', location: 'Gachibowli, Hyderabad', deliveryTime: '20-30 mins', hours: '7:00 AM - 10:00 PM', whatsapp: '919876543211', images: ['https://placehold.co/600x400/8b5cf6/ffffff?text=Purification+Plant', 'https://placehold.co/600x400/f97316/ffffff?text=Friendly+Staff'] },
+            { id: 3, name: 'Aqua Fresh Deliveries', location: 'Jubilee Hills, Hyderabad', deliveryTime: '45-60 mins', hours: '9:00 AM - 8:00 PM', whatsapp: '919876543212', images: ['https://placehold.co/600x400/ec4899/ffffff?text=Aqua+Fresh+Store', 'https://placehold.co/600x400/6366f1/ffffff?text=Clean+Bottles', 'https://placehold.co/600x400/f59e0b/ffffff?text=On-time+Delivery'] },
+            { id: 4, name: 'Daily Drop Waters', location: 'Banjara Hills, Hyderabad', deliveryTime: '30-40 mins', hours: '24/7 Service', whatsapp: '919876543213', images: ['https://placehold.co/600x400/22c55e/ffffff?text=24/7+Service', 'https://placehold.co/600x400/0ea5e9/ffffff?text=Fast+Delivery'] }
+        ];
+
+        // --- STATE MANAGEMENT ---
+        let selectedDealer = null;
+        let deliveryOption = 'now';
+        let userLocation = { lat: null, lon: null };
+        let slideIndexes = {}; 
+        let slideshowIntervals = {};
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            populateDealers();
+            getInitialUserLocation();
+            setupScrollAnimations();
+            createWaterDrops();
+            startAllSlideshows();
+        });
+
+        // --- WATER DROP CREATION ---
+        function createWaterDrops() {
+            const container = document.getElementById('dropContainer');
+            const numberOfDrops = 20;
+            for (let i = 0; i < numberOfDrops; i++) {
+                const drop = document.createElement('div');
+                drop.classList.add('drop');
+                drop.style.left = `${Math.random() * 100}vw`;
+                drop.style.animationDuration = `${Math.random() * 3 + 4}s`;
+                drop.style.animationDelay = `${Math.random() * 5}s`;
+                drop.style.opacity = Math.random();
+                drop.style.transform = `scale(${Math.random() * 0.5 + 0.5})`;
+                container.appendChild(drop);
+            }
+        }
+
+        // --- ANIMATION LOGIC ---
+        function setupScrollAnimations() {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) entry.target.classList.add('is-visible');
+                });
+            }, { threshold: 0.1 });
+            document.querySelectorAll('.animate-on-scroll').forEach(element => observer.observe(element));
+        }
+
+        // --- UI RENDERING ---
+        function populateDealers() {
+            const dealerList = document.getElementById('dealerList');
+            dealerList.innerHTML = ''; 
+            dealers.forEach((dealer, index) => {
+                const card = document.createElement('div');
+                card.className = 'dealer-card bg-white/80 backdrop-blur-sm p-5 rounded-lg shadow-lg border-2 border-transparent cursor-pointer flex flex-col animate-on-scroll';
+                card.style.transitionDelay = `${index * 100}ms`;
+                card.onclick = () => selectDealer(dealer.id);
+                card.id = `dealer-${dealer.id}`;
+                let slideshowHTML = '';
+                if (dealer.images && dealer.images.length > 0) {
+                    const imagesHTML = dealer.images.map((src, idx) => 
+                        `<img src="${src}" class="slide ${idx === 0 ? 'active' : ''}" alt="${dealer.name} image ${idx + 1}" onerror="this.onerror=null;this.src='https://placehold.co/600x400/cccccc/ffffff?text=Image+Not+Found';">`
+                    ).join('');
+                    slideshowHTML = `<div class="slideshow-container mb-4 rounded-lg overflow-hidden">${imagesHTML}<a class="prev" onclick="event.stopPropagation(); changeSlide(${dealer.id}, -1)">&#10094;</a><a class="next" onclick="event.stopPropagation(); changeSlide(${dealer.id}, 1)">&#10095;</a></div>`;
+                    slideIndexes[dealer.id] = 0; 
+                }
+                card.innerHTML = `${slideshowHTML}<div class="flex-grow"><h3 class="text-xl font-bold text-cyan-800">${dealer.name}</h3><p class="text-gray-600 mt-1">${dealer.location}</p><div class="mt-4 space-y-2 text-sm"><p><strong>Delivery Estimate:</strong> ${dealer.deliveryTime}</p><p><strong>Business Hours:</strong> ${dealer.hours}</p></div></div>`;
+                dealerList.appendChild(card);
+            });
+            setupScrollAnimations();
+        }
+        
+        // --- SLIDESHOW LOGIC ---
+        function startAllSlideshows() {
+            dealers.forEach(dealer => {
+                if (dealer.images && dealer.images.length > 1) {
+                    startAutoSlideshow(dealer.id);
+                }
+            });
+        }
+
+        function startAutoSlideshow(dealerId) {
+            clearInterval(slideshowIntervals[dealerId]);
+            slideshowIntervals[dealerId] = setInterval(() => {
+                changeSlide(dealerId, 1, false);
+            }, 3000);
+        }
+
+        function changeSlide(dealerId, n, isManual = true) {
+            const slideshow = document.querySelector(`#dealer-${dealerId} .slideshow-container`);
+            if (!slideshow) return;
+            const slides = slideshow.querySelectorAll('.slide');
+            if (slides.length <= 1) return;
+            slides[slideIndexes[dealerId]].classList.remove('active');
+            slideIndexes[dealerId] = (slideIndexes[dealerId] + n + slides.length) % slides.length;
+            slides[slideIndexes[dealerId]].classList.add('active');
+            if (isManual) {
+                startAutoSlideshow(dealerId);
+            }
+        }
+
+        // --- ACTIONS & EVENT HANDLERS ---
+        function selectDealer(dealerId) {
+            selectedDealer = dealers.find(d => d.id === dealerId);
+            document.querySelectorAll('.dealer-card').forEach(card => card.classList.remove('selected-dealer'));
+            document.getElementById(`dealer-${dealerId}`).classList.add('selected-dealer');
+            const orderDetailsSection = document.getElementById('orderDetails');
+            orderDetailsSection.classList.remove('hidden');
+            setTimeout(() => orderDetailsSection.classList.add('is-visible'), 10); 
+            window.scrollTo({ top: orderDetailsSection.offsetTop - 20, behavior: 'smooth' });
+        }
+
+        function updateQuantity(amount) {
+            const quantityInput = document.getElementById('waterCans');
+            quantityInput.value = Math.max(1, parseInt(quantityInput.value) + amount);
+        }
+
+        function selectDeliveryTime(option) {
+            deliveryOption = option;
+            const nowBtn = document.getElementById('deliverNowBtn');
+            const laterBtn = document.getElementById('scheduleLaterBtn');
+            const scheduleOptions = document.getElementById('scheduleOptions');
+            if (option === 'now') {
+                nowBtn.classList.replace('bg-gray-200', 'bg-blue-500');
+                nowBtn.classList.replace('text-gray-700', 'text-white');
+                laterBtn.classList.replace('bg-blue-500', 'bg-gray-200');
+                laterBtn.classList.replace('text-white', 'text-gray-700');
+                scheduleOptions.classList.add('hidden');
+            } else {
+                laterBtn.classList.replace('bg-gray-200', 'bg-blue-500');
+                laterBtn.classList.replace('text-gray-700', 'text-white');
+                nowBtn.classList.replace('bg-blue-500', 'bg-gray-200');
+                nowBtn.classList.replace('text-white', 'text-gray-700');
+                scheduleOptions.classList.remove('hidden');
+                const now = new Date();
+                now.setHours(now.getHours() + 1);
+                document.getElementById('deliveryTime').value = now.toISOString().slice(0, 16);
+            }
+        }
+
+        function showUserInfo() {
+            const userInfoSection = document.getElementById('userInfo');
+            userInfoSection.classList.remove('hidden');
+            setTimeout(() => userInfoSection.classList.add('is-visible'), 10);
+            window.scrollTo({ top: userInfoSection.offsetTop - 20, behavior: 'smooth' });
+        }
+
+        function confirmOrder() {
+            const quantity = document.getElementById('waterCans').value;
+            const name = document.getElementById('customerName').value.trim();
+            const mobile = document.getElementById('customerMobile').value.trim();
+            const address = document.getElementById('customerAddress').value.trim();
+
+            if (!name || !mobile || !address) {
+                alert('Please fill in your name, mobile number, and address.');
+                return;
+            }
+            if (!selectedDealer) {
+                alert('Something went wrong. Please select a dealer again.');
+                return;
+            }
+
+            let deliveryTimeMessage;
+            if (deliveryOption === 'now') {
+                deliveryTimeMessage = 'ASAP';
+            } else {
+                const scheduledTime = new Date(document.getElementById('deliveryTime').value);
+                if (isNaN(scheduledTime)) {
+                    alert('Please select a valid date and time for delivery.');
+                    return;
+                }
+                deliveryTimeMessage = scheduledTime.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            }
+
+            let locationMessage = 'Customer location not available.';
+            if (userLocation.lat && userLocation.lon) {
+                locationMessage = `Pinned Location: https://www.google.com/maps?q=${userLocation.lat},${userLocation.lon}`;
+            }
+
+            const message = `*New Water Can Order*\n\n*Dealer:* ${selectedDealer.name}\n*Customer Name:* ${name}\n*Mobile:* ${mobile}\n*Address:* ${address}\n\n--- *Order Details* ---\n*Quantity:* ${quantity} x 20L Cans\n*Delivery Time:* ${deliveryTimeMessage}\n\n--- *Location* ---\n${locationMessage}`;
+            const whatsappUrl = `https://wa.me/${selectedDealer.whatsapp}?text=${encodeURIComponent(message)}`;
+            window.open(whatsappUrl, '_blank');
+        }
+        
+        // --- GEOLOCATION ---
+        function handlePinLocationClick() {
+            const statusEl = document.getElementById('locationStatus');
+            if (!navigator.geolocation) {
+                statusEl.textContent = 'Geolocation is not supported.';
+                statusEl.style.color = 'red';
+                return;
+            }
+
+            statusEl.textContent = 'Getting location...';
+            statusEl.style.color = '#f97316'; // Orange color
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    userLocation.lat = position.coords.latitude;
+                    userLocation.lon = position.coords.longitude;
+                    statusEl.textContent = '✅ Location Pinned Successfully!';
+                    statusEl.style.color = '#22c55e'; // Green color
+                },
+                (error) => {
+                    console.warn("Could not get user location:", error.message);
+                    statusEl.textContent = '❌ Location denied. Please enable permissions.';
+                    statusEl.style.color = '#ef4444'; // Red color
+                }
+            );
+        }
+
+        function getInitialUserLocation() {
+            navigator.geolocation?.getCurrentPosition(
+                (position) => {
+                    userLocation.lat = position.coords.latitude;
+                    userLocation.lon = position.coords.longitude;
+                    console.log("Initial location captured silently.");
+                },
+                (error) => console.warn("Silent location fetch failed:", error.message)
+            );
+        }
+    </script>
+</body>
+</html>
 
