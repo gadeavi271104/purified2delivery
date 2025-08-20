@@ -142,7 +142,10 @@
 
             <!-- Step 2: Order Details -->
             <section id="orderDetails" class="hidden mb-8 bg-white/80 backdrop-blur-sm p-6 rounded-lg shadow-lg animate-on-scroll">
-                <h2 class="text-2xl font-semibold mb-6 border-b-2 border-cyan-200 pb-2 text-cyan-900">2. Order Details</h2>
+                <!-- Selected Dealer Info will be injected here -->
+                <div id="selectedDealerInfo" class="mb-6 pb-4 border-b border-cyan-200"></div>
+
+                <h2 class="text-2xl font-semibold mb-6 text-cyan-900">2. Complete Your Order</h2>
                 
                 <div class="mb-6">
                     <label for="waterCans" class="block text-lg font-medium text-gray-700 mb-2">Number of Water Cans (20L)</label>
@@ -169,7 +172,7 @@
                 </div>
                 
                 <button onclick="showUserInfo()" class="mt-8 w-full bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600 transition text-lg">
-                    Proceed
+                    Proceed to Enter Details
                 </button>
             </section>
 
@@ -237,7 +240,6 @@
             getInitialUserLocation();
             setupScrollAnimations();
             createWaterDrops();
-            startAllSlideshows();
         });
 
         // --- WATER DROP CREATION ---
@@ -272,10 +274,10 @@
             dealerList.innerHTML = ''; 
             dealers.forEach((dealer, index) => {
                 const card = document.createElement('div');
-                card.className = 'dealer-card bg-white/80 backdrop-blur-sm p-5 rounded-lg shadow-lg border-2 border-transparent cursor-pointer flex flex-col animate-on-scroll';
+                card.className = 'dealer-card bg-white/80 backdrop-blur-sm p-5 rounded-lg shadow-lg border-2 border-transparent flex flex-col animate-on-scroll';
                 card.style.transitionDelay = `${index * 100}ms`;
-                card.onclick = () => selectDealer(dealer.id);
                 card.id = `dealer-${dealer.id}`;
+                
                 let slideshowHTML = '';
                 if (dealer.images && dealer.images.length > 0) {
                     const imagesHTML = dealer.images.map((src, idx) => 
@@ -284,9 +286,24 @@
                     slideshowHTML = `<div class="slideshow-container mb-4 rounded-lg overflow-hidden">${imagesHTML}<a class="prev" onclick="event.stopPropagation(); changeSlide(${dealer.id}, -1)">&#10094;</a><a class="next" onclick="event.stopPropagation(); changeSlide(${dealer.id}, 1)">&#10095;</a></div>`;
                     slideIndexes[dealer.id] = 0; 
                 }
-                card.innerHTML = `${slideshowHTML}<div class="flex-grow"><h3 class="text-xl font-bold text-cyan-800">${dealer.name}</h3><p class="text-gray-600 mt-1">${dealer.location}</p><div class="mt-4 space-y-2 text-sm"><p><strong>Delivery Estimate:</strong> ${dealer.deliveryTime}</p><p><strong>Business Hours:</strong> ${dealer.hours}</p></div></div>`;
+
+                card.innerHTML = `
+                    ${slideshowHTML}
+                    <div class="flex-grow">
+                        <h3 class="text-xl font-bold text-cyan-800">${dealer.name}</h3>
+                        <p class="text-gray-600 mt-1">${dealer.location}</p>
+                        <div class="mt-4 space-y-2 text-sm">
+                            <p><strong>Delivery Estimate:</strong> ${dealer.deliveryTime}</p>
+                            <p><strong>Business Hours:</strong> ${dealer.hours}</p>
+                        </div>
+                    </div>
+                    <button onclick="selectDealer(${dealer.id})" class="mt-4 w-full bg-blue-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-600 transition">
+                        Select & Proceed
+                    </button>
+                `;
                 dealerList.appendChild(card);
             });
+            startAllSlideshows();
             setupScrollAnimations();
         }
         
@@ -319,11 +336,33 @@
             }
         }
 
+        function changeDealer() {
+            document.getElementById('dealerSelection').classList.remove('hidden');
+            document.getElementById('orderDetails').classList.add('hidden');
+            document.getElementById('userInfo').classList.add('hidden');
+            selectedDealer = null;
+            window.scrollTo({ top: document.getElementById('dealerSelection').offsetTop - 20, behavior: 'smooth' });
+        }
+
         // --- ACTIONS & EVENT HANDLERS ---
         function selectDealer(dealerId) {
             selectedDealer = dealers.find(d => d.id === dealerId);
-            document.querySelectorAll('.dealer-card').forEach(card => card.classList.remove('selected-dealer'));
-            document.getElementById(`dealer-${dealerId}`).classList.add('selected-dealer');
+            
+            // Populate the selected dealer info
+            const infoContainer = document.getElementById('selectedDealerInfo');
+            infoContainer.innerHTML = `
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">You are ordering from:</p>
+                        <h3 class="text-2xl font-bold text-cyan-800">${selectedDealer.name}</h3>
+                        <p class="text-sm text-gray-500">${selectedDealer.location}</p>
+                    </div>
+                    <button onclick="changeDealer()" class="text-sm text-blue-600 hover:underline font-semibold">Change Supplier</button>
+                </div>
+            `;
+
+            // Hide dealer list and show order details
+            document.getElementById('dealerSelection').classList.add('hidden');
             const orderDetailsSection = document.getElementById('orderDetails');
             orderDetailsSection.classList.remove('hidden');
             setTimeout(() => orderDetailsSection.classList.add('is-visible'), 10); 
@@ -442,4 +481,3 @@
     </script>
 </body>
 </html>
-
